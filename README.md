@@ -1,6 +1,6 @@
 # MediCount
 
-mobile app final project
+> mobile app: final project
 
 ## Development
 
