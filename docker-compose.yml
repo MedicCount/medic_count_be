@@ -10,9 +10,9 @@ services:
     ports:
       - ${PORT}:8000
     networks:
-      - cnc_killer_game_be
+      - medic_network
     restart: on-failure
 
 networks:
-  cnc_killer_game_be:
+  medic_network:
     driver: bridge
