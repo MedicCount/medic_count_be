@@ -92,12 +92,16 @@ async def detect(
         medicineGroup.set(mg_data)
         mgid = medicineGroup.id
 
+    elif not (f_store.collection('medicineGroup').document(mgid).get().exists):
+        return HTTPException(status_code=404, detail='Medicine Group not found')
+
     m_data: MedicineData = {
         'counts': len(res_labels),
         'uid': uid,
         'name': 'unknown',
         'image': 'unknown',
         'groupId': mgid,
+        'lables': [{'row': i, 'data': row} for i, row in enumerate(res_labels)]
     }
 
     medicine = f_store.collection('medicine').document()

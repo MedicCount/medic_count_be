@@ -6,6 +6,7 @@ class MedicineData(BaseModel):
     name: str = 'unknown'
     image: str = 'unknown'
     groupId: str
+    lables: list
 
 class MedicineGroupData(BaseModel):
     createdDate: float
