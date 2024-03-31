@@ -1,14 +1,16 @@
 from pydantic import BaseModel
+from datetime import datetime
+from ..services.firebase import timestamp
 
 class MedicineData(BaseModel):
     counts: int
-    uid: str
+    _uid: str
     name: str
-    image: str
+    _image: str
     groupId: str
     lables: list
 
 class MedicineGroupData(BaseModel):
-    createdDate: float
+    createdDate: datetime = timestamp
     groupName: str
-    uid: str
+    _uid: str

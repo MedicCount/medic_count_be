@@ -10,3 +10,4 @@ print("🔥 Connected to Firestore")
 f_store = firestore.client()
 authen = auth
 storage = storage
+timestamp = firestore.SERVER_TIMESTAMP

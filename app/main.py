@@ -4,8 +4,7 @@ from PIL import Image
 import io
 import os
 from yolov5.detect import run
-from .services.firebase import authen, f_store, storage
-import time
+from .services.firebase import authen, f_store, storage, timestamp
 from typing import Optional
 from .model.medicine import MedicineData, MedicineGroupData
 
@@ -31,7 +30,7 @@ def verify_permission(uid, provideId, idType):
     try:
         user = verify_user(uid)
         tmp = f_store.collection(idType).document(provideId)
-        if user.uid != tmp.get().to_dict()['uid']:
+        if user.uid != tmp.get().to_dict()['_uid']:
             raise HTTPException(status_code=403, detail='Permission denied')
         return tmp
     
@@ -95,9 +94,9 @@ async def detect(
     if mgid is None:
 
         mg_data: MedicineGroupData = {
-            'createdDate': time.time(),
+            'createdDate': timestamp,
             'groupName': 'unknown',
-            'uid': uid,
+            '_uid': uid,
         }
 
         medicineGroup = f_store.collection('medicineGroup').document()
@@ -105,13 +104,13 @@ async def detect(
         mgid = medicineGroup.id
 
     elif f_store.collection('medicineGroup').document(mgid).get().exists is False:
-        raise HTTPException(status_code=404, detail='Medicine Group not found')
+        return HTTPException(status_code=404, detail='Medicine Group not found')
 
     m_data: MedicineData = {
         'counts': len(res_labels),
-        'uid': uid,
+        '_uid': uid,
         'name': 'unknown',
-        'image': 'unknown',
+        '_image': 'unknown',
         'groupId': mgid,
         'lables': [{'row': i, 'data': row} for i, row in enumerate(res_labels)]
     }
@@ -124,7 +123,7 @@ async def detect(
     blob.upload_from_filename(local_image_path)
 
     medicine.update({
-        'image': destination
+        '_image': destination
     })
 
     return {
@@ -141,7 +140,6 @@ async def get_image(
     uid: str = Form(...), 
     mid: str = Form(...)
 ):
-    verify_user(uid)
     medicine = verify_permission(uid, mid, idType='medicine')
     local_image_path = f"{project_path}/{uid}/tmp.jpg"
 
@@ -149,14 +147,13 @@ async def get_image(
     blob = bucket.blob(medicine_image)
     blob.download_to_filename(local_image_path)
     
-    return FileResponse(local_image_path, media_idType='image/jpeg')
+    return FileResponse(local_image_path, media_type='image/jpeg')
 
 @app.get("/get_counts/")
 async def get_counts(
     uid: str = Form(...), 
     mid: str = Form(...)
 ):
-    verify_user(uid)
     medicine = verify_permission(uid, mid, idType='medicine')
     medicine_counts = medicine.get().to_dict()['counts']
 
@@ -173,13 +170,8 @@ async def update_medicine(
     uid: str,
     mid: str
 ):
-    verify_user(uid)
     medicine = verify_permission(uid, mid, idType='medicine')
-
     data = data.dict(exclude_unset=True)
-
-    data.pop('uid', None)
-    data.pop('image', None)
     medicine.update(data)
 
     return {
@@ -193,12 +185,8 @@ async def update_medicine_group(
     uid: str,
     mgid: str,
 ):
-    verify_user(uid)
     medicineGroup = verify_permission(uid, mgid, idType='medicineGroup')
-
     data = data.dict(exclude_unset=True)
-
-    data.pop('uid', None)
     medicineGroup.update(data)
 
     return {
@@ -207,3 +195,31 @@ async def update_medicine_group(
     }
 
 # TODO: Delete
+
+@app.delete("/delete_medicine/")
+async def delete_medicine(
+    uid: str = Form(...),
+    mid: str = Form(...),
+):
+    medicine = verify_permission(uid, mid, idType='medicine')
+    medicine.delete()
+
+    destination = f"{uid}/{medicine.id}/tmp.jpg"
+    blob = bucket.blob(destination)
+    blob.delete()
+
+    return {
+        'status': 'success',
+    }
+
+@app.delete("/delete_medicine_group/")
+async def delete_medicine_group(
+    uid: str = Form(...),
+    mgid: str = Form(...),
+):
+    medicineGroup = verify_permission(uid, mgid, idType='medicineGroup')
+    medicineGroup.delete()
+
+    return {
+        'status': 'success',
+    }
