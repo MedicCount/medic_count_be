@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, Form, Response, UploadFile, HTTPException
+from fastapi import FastAPI, File, Form, Response, UploadFile, HTTPException, Body
 from fastapi.responses import FileResponse
 from PIL import Image
 import io
@@ -23,6 +23,17 @@ def verify_user(uid):
         if user is None:
             raise HTTPException(status_code=404, detail='User not found')
         return user
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+def verify_permission(uid, provideId, idType):
+    try:
+        user = verify_user(uid)
+        tmp = f_store.collection(idType).document(provideId)
+        if user.uid != tmp.get().to_dict()['uid']:
+            raise HTTPException(status_code=403, detail='Permission denied')
+        return tmp
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -86,14 +97,15 @@ async def detect(
         mg_data: MedicineGroupData = {
             'createdDate': time.time(),
             'groupName': 'unknown',
+            'uid': uid,
         }
 
         medicineGroup = f_store.collection('medicineGroup').document()
         medicineGroup.set(mg_data)
         mgid = medicineGroup.id
 
-    elif not (f_store.collection('medicineGroup').document(mgid).get().exists):
-        return HTTPException(status_code=404, detail='Medicine Group not found')
+    elif f_store.collection('medicineGroup').document(mgid).get().exists is False:
+        raise HTTPException(status_code=404, detail='Medicine Group not found')
 
     m_data: MedicineData = {
         'counts': len(res_labels),
@@ -130,13 +142,14 @@ async def get_image(
     mid: str = Form(...)
 ):
     verify_user(uid)
+    medicine = verify_permission(uid, mid, idType='medicine')
     local_image_path = f"{project_path}/{uid}/tmp.jpg"
 
-    medicine_image = f_store.collection('medicine').document(mid).get().to_dict()['image']
+    medicine_image = medicine.get().to_dict()['image']
     blob = bucket.blob(medicine_image)
     blob.download_to_filename(local_image_path)
     
-    return FileResponse(local_image_path, media_type='image/jpeg')
+    return FileResponse(local_image_path, media_idType='image/jpeg')
 
 @app.get("/get_counts/")
 async def get_counts(
@@ -144,7 +157,8 @@ async def get_counts(
     mid: str = Form(...)
 ):
     verify_user(uid)
-    medicine_counts = f_store.collection('medicine').document(mid).get().to_dict()['counts']
+    medicine = verify_permission(uid, mid, idType='medicine')
+    medicine_counts = medicine.get().to_dict()['counts']
 
     return {
         'status': 'success',
@@ -153,17 +167,43 @@ async def get_counts(
 
 # TODO: Update
 
-# @app.patch("/update_medicine/")
-# async def update_medicine(data: MedicineData, uid: str = Form(...), mid: str = Form(...)):
-#     verify_user(uid)
-# 
-#     data = data.dict(exclude_unset=True)
-#     medicine = f_store.collection('medicine').document(mid)
-#     medicine.update(data)
-# 
-#     return {
-#         'status': 'success',
-#         'updated': data,
-#     }
+@app.put("/update_medicine/")
+async def update_medicine(
+    data: MedicineData,
+    uid: str,
+    mid: str
+):
+    verify_user(uid)
+    medicine = verify_permission(uid, mid, idType='medicine')
+
+    data = data.dict(exclude_unset=True)
+
+    data.pop('uid', None)
+    data.pop('image', None)
+    medicine.update(data)
+
+    return {
+        'status': 'success',
+        'data': data,
+    }
+
+@app.put("/update_medicine_group/")
+async def update_medicine_group(
+    data: MedicineGroupData,
+    uid: str,
+    mgid: str,
+):
+    verify_user(uid)
+    medicineGroup = verify_permission(uid, mgid, idType='medicineGroup')
+
+    data = data.dict(exclude_unset=True)
+
+    data.pop('uid', None)
+    medicineGroup.update(data)
+
+    return {
+        'status': 'success',
+        'data': data,
+    }
 
 # TODO: Delete
