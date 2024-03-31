@@ -26,3 +26,4 @@ seaborn>=0.11.0
 setuptools>=65.5.1
 wheel>=0.38.0
 pathlib==1.0.1
+yolov5==7.0.13
