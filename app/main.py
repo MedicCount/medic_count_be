@@ -1,16 +1,16 @@
-from fastapi import FastAPI, File, Form, Response, UploadFile, HTTPException, Body
+from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 from PIL import Image
 import io
 import os
 from yolov5.detect import run
-from .services.firebase import authen, f_store, storage, timestamp
+from services.firebase import authen, f_store, storage, timestamp
 from typing import Optional
-from .model.medicine import MedicineData, MedicineGroupData
+from model.medicine import MedicineData, MedicineGroupData
 
 app = FastAPI()
 
-ai_path = 'app/ai/best.pt'
+ai_path = 'app/ai/win_best.pt'
 project_path = 'app/ai/result'
 image_path = 'app/ai/image/tmp.jpg'
 
@@ -223,3 +223,7 @@ async def delete_medicine_group(
     return {
         'status': 'success',
     }
+
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8081)

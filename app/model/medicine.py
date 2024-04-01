@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 from datetime import datetime
-from ..services.firebase import timestamp
 
 class MedicineData(BaseModel):
     counts: int
@@ -11,6 +10,6 @@ class MedicineData(BaseModel):
     lables: list
 
 class MedicineGroupData(BaseModel):
-    createdDate: datetime = timestamp
+    createdDate: datetime = datetime.now()
     groupName: str
     _uid: str
