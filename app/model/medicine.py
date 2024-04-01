@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 
 class MedicineData(BaseModel):
+    _mid: str
     counts: int
     _uid: str
     name: str
@@ -10,6 +11,7 @@ class MedicineData(BaseModel):
     lables: list
 
 class MedicineGroupData(BaseModel):
+    _mgid: str
     createdDate: datetime = datetime.now()
     groupName: str
     _uid: str

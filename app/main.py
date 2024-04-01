@@ -102,6 +102,7 @@ async def detect(
         medicineGroup = f_store.collection('medicineGroup').document()
         medicineGroup.set(mg_data)
         mgid = medicineGroup.id
+        medicineGroup.update({'_mgid': mgid})
 
     elif f_store.collection('medicineGroup').document(mgid).get().exists is False:
         return HTTPException(status_code=404, detail='Medicine Group not found')
@@ -112,11 +113,13 @@ async def detect(
         'name': 'unknown',
         '_image': 'unknown',
         'groupId': mgid,
-        'lables': [{'row': i, 'data': row} for i, row in enumerate(res_labels)]
+        'labels': [{'row': i, 'data': row} for i, row in enumerate(res_labels)]
     }
 
     medicine = f_store.collection('medicine').document()
     medicine.set(m_data)
+    mid = medicine.id
+    medicine.update({'_mid': mid})
 
     destination = f"{uid}/{medicine.id}/tmp.jpg"
     blob = bucket.blob(destination)
@@ -135,6 +138,31 @@ async def detect(
         'storage': destination,
     }
 
+@app.post("/create_group/")
+async def create_group(
+    uid: str = Form(...),
+    groupName: str = Form(...),
+):
+    verify_user(uid)
+
+    mg_data: MedicineGroupData = {
+        'createdDate': timestamp,
+        'groupName': groupName,
+        '_uid': uid,
+    }
+
+    medicineGroup = f_store.collection('medicineGroup').document()
+    medicineGroup.set(mg_data)
+    mgid = medicineGroup.id
+    medicineGroup.update({'_mgid': mgid})
+
+    return {
+        'status': 'success',
+        'firestore': {
+            'medicineGroup': mgid,
+        }
+    }
+
 @app.get("/get_image/")
 async def get_image(
     uid: str = Form(...), 
@@ -149,20 +177,57 @@ async def get_image(
     
     return FileResponse(local_image_path, media_type='image/jpeg')
 
-@app.get("/get_counts/")
-async def get_counts(
+@app.get("/get_medicine/")
+async def get_medicine(
     uid: str = Form(...), 
     mid: str = Form(...)
 ):
+    verify_user(uid)
     medicine = verify_permission(uid, mid, idType='medicine')
-    medicine_counts = medicine.get().to_dict()['counts']
 
     return {
         'status': 'success',
-        'counts': medicine_counts,
+        'medicine': medicine.get().to_dict(),
     }
 
-# TODO: Update
+@app.get("/get_medicine_group/")
+async def get_medicine_group(
+    uid: str = Form(...), 
+    mgid: str = Form(...)
+):
+    verify_user(uid)
+    medicineGroup = verify_permission(uid, mgid, idType='medicineGroup')
+
+    return {
+        'status': 'success',
+        'medicineGroup': medicineGroup.get().to_dict(),
+    }
+
+@app.get("/get_all_medicines/")
+async def get_all_medicines(
+    uid: str = Form(...),
+):
+    verify_user(uid)
+    medicine_list = f_store.collection('medicine').where('_uid', '==', uid).stream()
+
+    return {
+        'status': 'success',
+        'medicineList': [i.to_dict() for i in medicine_list],
+    }
+
+@app.get("/get_all_medicine_groups/")
+async def get_all_medicine_groups(
+    uid: str = Form(...),
+):
+    verify_user(uid)
+    medicine_group_list = f_store.collection('medicineGroup').where('_uid', '==', uid).stream()
+
+    return {
+        'status': 'success',
+        'medicineGroupList': [i.to_dict() for i in medicine_group_list],
+    }
+
+# TODO: Update  
 
 @app.put("/update_medicine/")
 async def update_medicine(
@@ -220,6 +285,10 @@ async def delete_medicine_group(
     medicineGroup = verify_permission(uid, mgid, idType='medicineGroup')
     medicineGroup.delete()
 
+    medicine_list = f_store.collection('medicine').where('groupId', '==', mgid).stream()
+    for i in medicine_list:
+        i.reference.delete()
+    
     return {
         'status': 'success',
     }
