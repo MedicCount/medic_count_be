@@ -103,7 +103,7 @@ async def detect(
     if mgid is None:
 
         mg_data: MedicineGroupData = {
-            'createdDate': timestamp,
+            '_createdDate': timestamp,
             'groupName': 'unknown',
             '_uid': uid,
         }
@@ -155,7 +155,7 @@ async def create_group(
     verify_user(uid)
 
     mg_data: MedicineGroupData = {
-        'createdDate': timestamp,
+        '_createdDate': timestamp,
         'groupName': groupName,
         '_uid': uid,
     }
@@ -180,7 +180,7 @@ async def get_image(
     medicine = verify_permission(uid, mid, idType='medicine')
     local_image_path = f"{project_path}/{uid}/tmp.jpg"
 
-    medicine_image = medicine.get().to_dict()['image']
+    medicine_image = medicine.get().to_dict()['_image']
     blob = bucket.blob(medicine_image)
     blob.download_to_filename(local_image_path)
     
@@ -253,7 +253,7 @@ async def update_medicine(
         'data': data,
     }
 
-@app.put("/update_medicine_group/{uid}/{mid}/")
+@app.put("/update_medicine_group/{uid}/{mgid}/")
 async def update_medicine_group(
     data: MedicineGroupData,
     uid: str,

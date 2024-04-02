@@ -12,6 +12,6 @@ class MedicineData(BaseModel):
 
 class MedicineGroupData(BaseModel):
     _mgid: str
-    createdDate: datetime = datetime.now()
+    _createdDate: datetime = datetime.now()
     groupName: str
     _uid: str
