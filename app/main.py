@@ -7,8 +7,17 @@ from yolov5.detect import run
 from services.firebase import authen, f_store, storage, timestamp
 from typing import Optional
 from model.medicine import MedicineData, MedicineGroupData
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 ai_path = 'app/ai/win_best.pt'
 project_path = 'app/ai/result'
@@ -229,7 +238,7 @@ async def get_all_medicine_groups(
 
 # TODO: Update  
 
-@app.put("/update_medicine/")
+@app.put("/update_medicine/{uid}/{mid}/")
 async def update_medicine(
     data: MedicineData,
     uid: str,
@@ -244,7 +253,7 @@ async def update_medicine(
         'data': data,
     }
 
-@app.put("/update_medicine_group/")
+@app.put("/update_medicine_group/{uid}/{mid}/")
 async def update_medicine_group(
     data: MedicineGroupData,
     uid: str,
